@@ -1,14 +1,17 @@
 import os
+import time
 from openai import OpenAI
 from dotenv import load_dotenv
 from asgiref.sync import sync_to_async
+
+from diary.models import User
 
 from .open_ai_tools import get_open_ai_client
 
 load_dotenv()
 
 
-def create_thread(user, open_ai_client):
+async def create_thread(user, open_ai_client, assistant_id):
     """
     Creates a thread for the given user on the current OpenAI Assistant
     Used when a user does not have an active thread with an Assistant
@@ -16,8 +19,12 @@ def create_thread(user, open_ai_client):
 
     print("in create threat")
     thread = open_ai_client.beta.threads.create()
-
     return thread
+
+
+async def get_thread(thread_id):
+    open_ai_client = get_open_ai_client()
+    return open_ai_client.beta.threads.retrieve(thread_id)
 
 
 async def get_or_create_thread(user):
@@ -28,10 +35,8 @@ async def get_or_create_thread(user):
 
     open_ai_client = get_open_ai_client()
     if user.thread_id:
-        # try to find thread for user, if no thread it creates one
-
         thread_id = user.thread_id
-        thread = open_ai_client.beta.threads.retrieve(thread_id)
+        thread = get_thread(thread_id)
     else:
         print("Creating new thread", user, open_ai_client)
         thread = create_thread(user, open_ai_client)
@@ -39,3 +44,29 @@ async def get_or_create_thread(user):
         await sync_to_async(user.save)()
 
     return thread
+
+
+async def send_message_to_assistant(user: User, message: str, assistant_id: str):
+    open_ai_client = get_open_ai_client()
+
+    # Send message to OpenAI Assistant
+    oai_response = open_ai_client.beta.threads.messages.create(
+        thread_id=user.thread_id,
+        role="user",
+        content=message,
+    )
+
+    # run therapy assistant with new message
+    run = open_ai_client.beta.threads.runs.create(
+        thread_id=user.thread_id, assistant_id=assistant_id
+    )
+
+    while run.status != "completed":
+        run = open_ai_client.beta.threads.runs.retrieve(
+            thread_id=user.thread_id, run_id=run.id
+        )
+        time.sleep(1)
+
+    messages = open_ai_client.beta.threads.messages.list(thread_id=user.thread_id)
+    assistant_prompt_text = messages.data[0].content[0].text.value
+    return assistant_prompt_text

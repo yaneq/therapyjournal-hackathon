@@ -5,6 +5,8 @@ import io
 from telegram import Update
 import telegram
 import datetime
+from lib.dates import get_date_prefix
+import db
 from telegram.ext import (
     filters,
     MessageHandler,
@@ -13,11 +15,12 @@ from telegram.ext import (
     ContextTypes,
 )
 from chatbot.week_in_review import send_week_in_review
+import re
 
-import db
+
 from diary.models import User
 from lib.assistant import get_reminder_message, suggest_improvements, summarize_week
-from lib.threads import get_or_create_thread
+from lib.threads import create_thread, get_or_create_thread, send_message_to_assistant
 from lib.therapist import analyze_journal
 from lib.open_ai_tools import get_open_ai_client
 from lib.utils import remove_command_string
@@ -35,8 +38,7 @@ from lib.config import Config
 
 config = Config.from_yaml("config.yaml")
 
-print("config is", config)
-
+ASSISTANT_ID = "asst_GkfXhaTs2A0aeZTY1SXGUw3l"
 MIN_MESSAGE_LENGTH_FOR_REFLECTION = 200
 
 logging.basicConfig(
@@ -45,18 +47,24 @@ logging.basicConfig(
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = "I am journal bot. \
-Write down your journal entries here.\n\n \
-\
-You can set a personal goal by using the /setgoal [goal] command. \n \
-Once you wrote something, you can use the /reflect command to get an analysis of your comments.\n\n\
-You can see your current goal by using the /goal command, and general info by using the /info command.\n\n\
-To turn on daily reminders, use /reminders on\n\n\
-To turn on weekly summaries of your entries, use /weekly_review on\n\n\
-"
+    open_ai_client = get_open_ai_client()
+    user = await get_user(update)
+    thread = await create_thread(user, open_ai_client, ASSISTANT_ID)
+    user.thread_id = thread.id
+    await sync_to_async(user.save)()
 
-    await context.bot.send_message(
-        chat_id=update.message.chat_id, text=text  # , reply_markup=keyboard_markup
+    reply = await send_message_to_assistant(user, "Hello", ASSISTANT_ID)
+
+    # Send to telegram
+    telegram_message = await context.bot.send_message(
+        chat_id=update.effective_chat.id, text=reply
+    )
+    # Archive therapist message
+    db_message = await sync_to_async(user.messages.create)(
+        user=user,
+        text=reply,
+        author="TherapistBot",
+        telegram_message_id=telegram_message.message_id,
     )
 
 
@@ -90,14 +98,33 @@ async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         telegram_message_id=update.message.message_id,
         source="TelegramText",
     )
-    if config.persist_message_to_thread:
-        thread = get_or_create_thread(user)
-        open_ai_client = get_open_ai_client()
-        open_ai_client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=text,
-        )
+
+    await context.bot.send_chat_action(
+        chat_id=update.effective_chat.id,
+        action=telegram.constants.ChatAction.TYPING,
+    )
+
+    text_with_date = get_date_prefix() + text
+    reply = await send_message_to_assistant(user, text_with_date, ASSISTANT_ID)
+
+    pattern = re.compile(r"\b[A-Z]\)")
+    matches = pattern.findall(reply)
+    keyboard_markup = None
+    if len(matches) > 0:
+        keyboard = [[telegram.KeyboardButton(match)] for match in matches]
+        keyboard_markup = telegram.ReplyKeyboardMarkup(keyboard)
+
+    # Send to telegram
+    telegram_message = await context.bot.send_message(
+        chat_id=update.effective_chat.id, text=reply, reply_markup=keyboard_markup
+    )
+    # Archive therapist message
+    db_message = await sync_to_async(user.messages.create)(
+        user=user,
+        text=reply,
+        author="TherapistBot",
+        telegram_message_id=telegram_message.message_id,
+    )
 
 
 async def reflect(update: Update, context: ContextTypes.DEFAULT_TYPE):
