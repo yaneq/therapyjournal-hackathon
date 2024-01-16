@@ -19,7 +19,7 @@ import re
 
 
 from diary.models import User
-from lib.assistant import get_reminder_message, suggest_improvements, summarize_week
+from lib.assistant import suggest_improvements
 from lib.threads import create_thread, get_or_create_thread, send_message_to_assistant
 from lib.therapist import analyze_journal
 from lib.open_ai_tools import get_open_ai_client
@@ -38,7 +38,6 @@ from lib.config import Config
 
 config = Config.from_yaml("config.yaml")
 
-ASSISTANT_ID = "asst_GkfXhaTs2A0aeZTY1SXGUw3l"
 MIN_MESSAGE_LENGTH_FOR_REFLECTION = 200
 
 logging.basicConfig(
@@ -49,11 +48,13 @@ logging.basicConfig(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     open_ai_client = get_open_ai_client()
     user = await get_user(update)
-    thread = await create_thread(user, open_ai_client, ASSISTANT_ID)
+    thread = await create_thread(user, open_ai_client, config.assistant_id_life_coach)
     user.thread_id = thread.id
     await sync_to_async(user.save)()
 
-    reply = await send_message_to_assistant(user, "Hello", ASSISTANT_ID)
+    reply = await send_message_to_assistant(
+        user, "Hello", config.assistant_id_life_coach
+    )
 
     # Send to telegram
     telegram_message = await context.bot.send_message(
@@ -105,14 +106,14 @@ async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     text_with_date = get_date_prefix() + text
-    reply = await send_message_to_assistant(user, text_with_date, ASSISTANT_ID)
+    reply = await send_message_to_assistant(
+        user, text_with_date, config.assistant_id_life_coach
+    )
 
     pattern = re.compile(r"\b[A-Z]\)")
     matches = pattern.findall(reply)
-    keyboard_markup = None
-    if len(matches) > 0:
-        keyboard = [[telegram.KeyboardButton(match)] for match in matches]
-        keyboard_markup = telegram.ReplyKeyboardMarkup(keyboard)
+    keyboard = [[telegram.KeyboardButton(match)] for match in matches]
+    keyboard_markup = telegram.ReplyKeyboardMarkup(keyboard)
 
     # Send to telegram
     telegram_message = await context.bot.send_message(
