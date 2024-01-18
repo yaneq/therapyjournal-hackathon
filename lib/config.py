@@ -6,6 +6,7 @@ import yaml
 class Config:
     persist_message_to_thread: bool
     assistant_id_life_coach: str
+    admin_chat_id: str
 
     @classmethod
     def from_yaml(cls, file_path: str):

@@ -36,7 +36,7 @@ sentry_sdk.init(
 
 from lib.config import Config
 
-config = Config.from_yaml("config.yaml")
+config = Config.load()
 
 MIN_MESSAGE_LENGTH_FOR_REFLECTION = 200
 
@@ -66,6 +66,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text=reply,
         author="TherapistBot",
         telegram_message_id=telegram_message.message_id,
+    )
+
+    await context.bot.send_message(
+        chat_id=config.admin_chat_id, text=f"New diary bot user: {user.first_name}"
     )
 
 
