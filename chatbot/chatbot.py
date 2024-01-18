@@ -122,7 +122,7 @@ async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[telegram.KeyboardButton(match)] for match in matches]
         keyboard_markup = telegram.ReplyKeyboardMarkup(keyboard)
     else:
-        keyboard = {"remove_keyboard": True}
+        keyboard_markup = {"remove_keyboard": True}
 
     # Send to telegram
     telegram_message = await context.bot.send_message(
