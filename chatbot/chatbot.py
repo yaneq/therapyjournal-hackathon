@@ -251,11 +251,14 @@ async def send_week_in_review_wrapper(
 async def reminders_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await get_user(update)
     command = remove_command_string(update.message.text)
-    reminders_on = command == "on"
+    reminders_on = command == "/reminders_on"
     user.enable_reminders = reminders_on
     await sync_to_async(user.save)()
-    await telegram_message(
-        user, context, f"Reminders switched {'on' if reminders_on else 'off'}"
+    user_message = f"Reminders switched {'on' if reminders_on else 'off'}"
+    await telegram_message(user, context, user_message)
+    await context.bot.send_message(
+        chat_id=config.admin_chat_id,
+        text=f"userlog ({user.first_name}): {user_message}",
     )
 
 
@@ -282,8 +285,9 @@ def serve_bot():
     application.add_handler(
         CommandHandler("week_in_review", send_week_in_review_wrapper)
     )
-    application.add_handler(CommandHandler("reminders", reminders_switch))
     application.add_handler(CommandHandler("weekly_review", weekly_review_switch))
+    application.add_handler(CommandHandler("reminders_on", reminders_switch))
+    application.add_handler(CommandHandler("reminders_off", reminders_switch))
 
     # Regular message handler
     application.add_handler(
