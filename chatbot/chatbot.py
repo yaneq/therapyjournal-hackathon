@@ -5,6 +5,7 @@ import io
 from telegram import Update
 import telegram
 import datetime
+from admin import user_log
 from lib.dates import get_date_prefix
 import db
 from telegram.ext import (
@@ -68,9 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         telegram_message_id=telegram_message.message_id,
     )
 
-    await context.bot.send_message(
-        chat_id=config.admin_chat_id, text=f"New diary bot user: {user.first_name}"
-    )
+    user_log(user, context, "New user")
 
 
 async def get_user(update):
@@ -256,10 +255,7 @@ async def reminders_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await sync_to_async(user.save)()
     user_message = f"Reminders switched {'on' if reminders_on else 'off'}"
     await telegram_message(user, context, user_message)
-    await context.bot.send_message(
-        chat_id=config.admin_chat_id,
-        text=f"userlog ({user.first_name}): {user_message}",
-    )
+    user_log(user, context, user_message)
 
 
 async def weekly_review_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
