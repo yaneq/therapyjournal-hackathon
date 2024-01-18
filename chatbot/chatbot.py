@@ -118,8 +118,11 @@ async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     pattern = re.compile(r"\b[A-Z]\)")
     matches = pattern.findall(reply)
-    keyboard = [[telegram.KeyboardButton(match)] for match in matches]
-    keyboard_markup = telegram.ReplyKeyboardMarkup(keyboard)
+    if matches:
+        keyboard = [[telegram.KeyboardButton(match)] for match in matches]
+        keyboard_markup = telegram.ReplyKeyboardMarkup(keyboard)
+    else:
+        keyboard = {"remove_keyboard": True}
 
     # Send to telegram
     telegram_message = await context.bot.send_message(
