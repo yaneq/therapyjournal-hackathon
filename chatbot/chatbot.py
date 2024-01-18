@@ -69,7 +69,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         telegram_message_id=telegram_message.message_id,
     )
 
-    user_log(user, context, "New user")
+    await user_log(user, context, "New user")
 
 
 async def get_user(update):
@@ -255,7 +255,7 @@ async def reminders_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await sync_to_async(user.save)()
     user_message = f"Reminders switched {'on' if reminders_on else 'off'}"
     await telegram_message(user, context, user_message)
-    user_log(user, context, user_message)
+    await user_log(user, context, user_message)
 
 
 async def weekly_review_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
