@@ -5,6 +5,7 @@ from django.db import models
 class User(models.Model):
     chat_id = models.BigIntegerField(unique=True)
     first_name = models.CharField(max_length=100)
+    last_name = models.CharField(max_length=200, null=True)
     thread_id = models.CharField(max_length=50)
     goal = models.CharField(max_length=20000, null=True)
     enable_week_in_review = models.BooleanField(default=False)

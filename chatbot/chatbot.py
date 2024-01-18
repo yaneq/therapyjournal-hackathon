@@ -79,7 +79,9 @@ async def get_user(update):
         user = await sync_to_async(User.objects.get)(chat_id=chat_id)
     except:
         user = await sync_to_async(User.objects.create)(
-            chat_id=chat_id, first_name=update.effective_user.first_name
+            chat_id=chat_id,
+            first_name=update.effective_user.first_name,
+            last_name=update.effective_user.last_name,
         )
     return user
 
