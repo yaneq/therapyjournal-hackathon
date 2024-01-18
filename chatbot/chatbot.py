@@ -5,7 +5,7 @@ import io
 from telegram import Update
 import telegram
 import datetime
-from admin import user_log
+
 from lib.dates import get_date_prefix
 import db
 from telegram.ext import (
@@ -20,6 +20,7 @@ import re
 
 
 from diary.models import User
+from lib.admin import user_log
 from lib.assistant import suggest_improvements
 from lib.threads import create_thread, get_or_create_thread, send_message_to_assistant
 from lib.therapist import analyze_journal
