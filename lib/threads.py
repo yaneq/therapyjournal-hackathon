@@ -61,12 +61,21 @@ async def send_message_to_assistant(user: User, message: str, assistant_id: str)
         thread_id=user.thread_id, assistant_id=assistant_id
     )
 
-    while run.status != "completed":
+    while run.status not in ["completed", "failed"]:
+
         run = open_ai_client.beta.threads.runs.retrieve(
             thread_id=user.thread_id, run_id=run.id
         )
         time.sleep(1)
 
-    messages = open_ai_client.beta.threads.messages.list(thread_id=user.thread_id)
-    assistant_prompt_text = messages.data[0].content[0].text.value
-    return assistant_prompt_text
+    if run.status == "failed":
+        # Log error details if available
+        error_message = run.last_error.code if run.last_error else "Unknown error"
+        print(f"Run failed with error: {error_message}")
+        # Handle the error appropriately - you might raise an exception or return an error message
+        raise Exception(f"Failed to complete run: {error_message}")
+
+    if run.status == "success":
+        messages = open_ai_client.beta.threads.messages.list(thread_id=user.thread_id)
+        assistant_prompt_text = messages.data[0].content[0].text.value
+        return assistant_prompt_text

@@ -8,6 +8,7 @@ import datetime
 
 from lib.dates import get_date_prefix
 import db
+from db import persist_message
 from telegram.ext import (
     filters,
     MessageHandler,
@@ -98,13 +99,7 @@ async def set_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await get_user(update)
     text = update.message.text
-    await sync_to_async(user.messages.create)(
-        user=user,
-        text=text,
-        author="User",
-        telegram_message_id=update.message.message_id,
-        source="TelegramText",
-    )
+    await persist_message(user, text)
 
     await context.bot.send_chat_action(
         chat_id=update.effective_chat.id,
@@ -112,9 +107,13 @@ async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     text_with_date = get_date_prefix() + text
-    reply = await send_message_to_assistant(
-        user, text_with_date, config.assistant_id_life_coach
-    )
+    try:
+        reply = await send_message_to_assistant(
+            user, text_with_date, config.assistant_id_life_coach
+        )
+    except Exception as e:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=str(e))
+        return
 
     pattern = re.compile(r"\b[A-Z]\)")
     matches = pattern.findall(reply)
@@ -206,7 +205,7 @@ async def transcribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"Transcription: {transcript.text}",
+        text=f"Transcription: {transcript.text}"[:4000],
     )
 
     await sync_to_async(user.messages.create)(
