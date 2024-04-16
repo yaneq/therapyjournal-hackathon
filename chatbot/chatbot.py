@@ -58,11 +58,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = await send_message_to_assistant(
         user, "Hello", config.assistant_id_life_coach
     )
-
     # Send to telegram
     telegram_message = await context.bot.send_message(
         chat_id=update.effective_chat.id, text=reply
     )
+
     # Archive therapist message
     db_message = await sync_to_async(user.messages.create)(
         user=user,
@@ -115,7 +115,7 @@ async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text=str(e))
         return
 
-    pattern = re.compile(r"^(?:[A-Z]\)|\d+\..*|[A-Za-z]\..*)$", re.MULTILINE)
+    pattern = re.compile(r"^(?:[A-Z]\)|\d+\..*|[A-Za-z]\..*)$")
     matches = pattern.findall(reply)
     if matches:
         keyboard = [[telegram.KeyboardButton(match)] for match in matches]
