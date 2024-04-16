@@ -115,7 +115,7 @@ async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text=str(e))
         return
 
-    pattern = re.compile(r"\b[A-Z]\)")
+    pattern = re.compile(r"^(?:[A-Z]\)|\d+\..*|[A-Za-z]\..*)$", re.MULTILINE)
     matches = pattern.findall(reply)
     if matches:
         keyboard = [[telegram.KeyboardButton(match)] for match in matches]
