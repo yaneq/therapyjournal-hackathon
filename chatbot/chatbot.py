@@ -58,9 +58,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user.thread_id = thread.id
     await sync_to_async(user.save)()
 
-    reply = await send_message_to_assistant(
-        user, "Hello", config.assistant_id_life_coach
-    )
+    reply = await send_message_to_assistant(user, "Hello")
+
     # Send to telegram
     telegram_message = await send_telegram_message(user, context, reply)
 

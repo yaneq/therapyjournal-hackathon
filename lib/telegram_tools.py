@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import (
     ContextTypes,
 )
-from lib.utils import parse_multiple_choice
+from lib.utils import parse_multiple_choice, purge_multiple_choice
 
 
 async def send_telegram_message(
@@ -18,9 +18,11 @@ async def send_telegram_message(
     else:
         keyboard_markup = {"remove_keyboard": True}
 
+    message_without_tags = purge_multiple_choice(message)
+
     # Send to telegram
     telegram_message = await context.bot.send_message(
-        chat_id=user.chat_id, text=message, reply_markup=keyboard_markup
+        chat_id=user.chat_id, text=message_without_tags, reply_markup=keyboard_markup
     )
     return telegram_message
 

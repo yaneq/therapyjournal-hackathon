@@ -15,3 +15,11 @@ def parse_multiple_choice(text):
         return answers
     else:
         return []
+
+
+def purge_multiple_choice(text):
+    # Remove text between <multiple-choice> and </multiple-choice> tags
+    text = re.sub(
+        r"<multiple-choice>(.*?)</multiple-choice>", "", text, flags=re.DOTALL
+    )
+    return text
