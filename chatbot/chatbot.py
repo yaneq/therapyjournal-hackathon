@@ -22,10 +22,11 @@ import re
 from diary.models import User
 from lib.admin import user_log
 from lib.assistant import suggest_improvements
-from lib.threads import create_thread, get_or_create_thread, send_message_to_assistant
-from lib.therapist import analyze_journal
+from lib.threads import create_thread, send_message_to_assistant
+
+# from lib.therapist import analyze_journal
 from lib.open_ai_tools import get_open_ai_client
-from lib.utils import parse_multiple_choice, remove_command_string
+from lib.utils import remove_command_string
 from lib.env import env
 from lib.telegram_tools import send_telegram_message, send_typing_animation
 from lib.whisper_tools import audio_to_text
@@ -53,7 +54,7 @@ logging.basicConfig(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     open_ai_client = get_open_ai_client()
     user = await get_user(update)
-    thread = await create_thread(user, open_ai_client, config.assistant_id_life_coach)
+    thread = await create_thread(user, open_ai_client)
     user.thread_id = thread.id
     await sync_to_async(user.save)()
 
