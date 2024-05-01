@@ -3,21 +3,22 @@ import time
 from openai import OpenAI
 from dotenv import load_dotenv
 from asgiref.sync import sync_to_async
-
 from diary.models import User
-
 from .open_ai_tools import get_open_ai_client
+from lib.dates import get_date_prefix
 
 load_dotenv()
+from lib.config import Config
+
+config = Config.load()
 
 
-async def create_thread(user, open_ai_client, assistant_id):
+async def create_thread(user, open_ai_client):
     """
     Creates a thread for the given user on the current OpenAI Assistant
     Used when a user does not have an active thread with an Assistant
     """
 
-    print("in create threat")
     thread = open_ai_client.beta.threads.create()
     return thread
 
@@ -46,19 +47,27 @@ async def get_or_create_thread(user):
     return thread
 
 
-async def send_message_to_assistant(user: User, message: str, assistant_id: str):
+async def retrieve_thread_status(thread_id: str):
+    open_ai_client = get_open_ai_client()
+    thread = open_ai_client.beta.threads.retrieve(thread_id)
+    return thread.status
+
+
+async def send_message_to_assistant(user: User, message: str):
     open_ai_client = get_open_ai_client()
 
+    message_with_date = get_date_prefix() + message
+
     # Send message to OpenAI Assistant
-    oai_response = open_ai_client.beta.threads.messages.create(
+    open_ai_client.beta.threads.messages.create(
         thread_id=user.thread_id,
         role="user",
-        content=message,
+        content=message_with_date,
     )
 
     # run therapy assistant with new message
     run = open_ai_client.beta.threads.runs.create(
-        thread_id=user.thread_id, assistant_id=assistant_id
+        thread_id=user.thread_id, assistant_id=config.assistant_id_life_coach
     )
 
     while run.status not in ["completed", "failed"]:

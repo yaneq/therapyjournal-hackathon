@@ -1,7 +1,6 @@
 from asgiref.sync import sync_to_async
 import logging
 from os import getenv
-import io
 from telegram import Update
 import telegram
 import datetime
@@ -26,11 +25,14 @@ from lib.assistant import suggest_improvements
 from lib.threads import create_thread, get_or_create_thread, send_message_to_assistant
 from lib.therapist import analyze_journal
 from lib.open_ai_tools import get_open_ai_client
-from lib.utils import remove_command_string
+from lib.utils import parse_multiple_choice, remove_command_string
 from lib.env import env
-from lib.telegram_tools import telegram_message
-from lib.config import Config
+from lib.telegram_tools import send_telegram_message, send_typing_animation
+from lib.whisper_tools import audio_to_text
+
+from django.core.exceptions import ObjectDoesNotExist
 import sentry_sdk
+
 
 sentry_sdk.init(
     dsn=env("SENTRY_DSN"),
@@ -41,7 +43,7 @@ from lib.config import Config
 
 config = Config.load()
 
-MIN_MESSAGE_LENGTH_FOR_REFLECTION = 200
+# MIN_MESSAGE_LENGTH_FOR_REFLECTION = 200
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
@@ -59,9 +61,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user, "Hello", config.assistant_id_life_coach
     )
     # Send to telegram
-    telegram_message = await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=reply
-    )
+    telegram_message = await send_telegram_message(user, context, reply)
 
     # Archive therapist message
     db_message = await sync_to_async(user.messages.create)(
@@ -78,7 +78,7 @@ async def get_user(update):
     chat_id = update.effective_chat.id
     try:
         user = await sync_to_async(User.objects.get)(chat_id=chat_id)
-    except:
+    except ObjectDoesNotExist:
         user = await sync_to_async(User.objects.create)(
             chat_id=chat_id,
             first_name=update.effective_user.first_name,
@@ -87,88 +87,59 @@ async def get_user(update):
     return user
 
 
-async def set_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = await get_user(update)
-    user.goal = remove_command_string(update.message.text)
-    await sync_to_async(user.save)()
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id, text="Goal updated"
-    )
-
-
 async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await get_user(update)
     text = update.message.text
-    await persist_message(user, text)
+    await persist_message(user, text, update.message.id)
 
-    await context.bot.send_chat_action(
-        chat_id=update.effective_chat.id,
-        action=telegram.constants.ChatAction.TYPING,
-    )
+    send_typing_animation(context, user)
 
-    text_with_date = get_date_prefix() + text
     try:
-        reply = await send_message_to_assistant(
-            user, text_with_date, config.assistant_id_life_coach
-        )
+        reply = await send_message_to_assistant(user, text)
     except Exception as e:
         await context.bot.send_message(chat_id=update.effective_chat.id, text=str(e))
         return
 
-    pattern = re.compile(r"^(?:[A-Z]\)|\d+\..*|[A-Za-z]\..*)$")
-    matches = pattern.findall(reply)
-    if matches:
-        keyboard = [[telegram.KeyboardButton(match)] for match in matches]
-        keyboard_markup = telegram.ReplyKeyboardMarkup(keyboard)
-    else:
-        keyboard_markup = {"remove_keyboard": True}
+    telegram_message = await send_telegram_message(user, context, reply)
 
-    # Send to telegram
-    telegram_message = await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=reply, reply_markup=keyboard_markup
-    )
-    # Archive therapist message
-    db_message = await sync_to_async(user.messages.create)(
-        user=user,
-        text=reply,
-        author="TherapistBot",
-        telegram_message_id=telegram_message.message_id,
+    await persist_message(
+        user, reply, telegram_message.message_id, author="TherapistBot"
     )
 
 
-async def reflect(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = await get_user(update)
-    combined = ""
-    async for message in user.messages.filter(author="User", processed=False):
-        combined += message.text + "\n\n"
+# async def reflect(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     user = await get_user(update)
+#     combined = ""
+#     async for message in user.messages.filter(author="User", processed=False):
+#         combined += message.text + "\n\n"
 
-    if len(combined) < MIN_MESSAGE_LENGTH_FOR_REFLECTION:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=f"Analysis will be more helpful if you write at last {MIN_MESSAGE_LENGTH_FOR_REFLECTION - len(combined)} more characters before reflecting.",
-        )
-    else:
-        await context.bot.send_chat_action(
-            chat_id=update.effective_chat.id,
-            action=telegram.constants.ChatAction.TYPING,
-        )
+#     if len(combined) < MIN_MESSAGE_LENGTH_FOR_REFLECTION:
+#         await context.bot.send_message(
+#             chat_id=update.effective_chat.id,
+#             text=f"Analysis will be more helpful if you write at last {MIN_MESSAGE_LENGTH_FOR_REFLECTION - len(combined)} more characters before reflecting.",
+#         )
+#     else:
+#         await context.bot.send_chat_action(
+#             chat_id=update.effective_chat.id,
+#             action=telegram.constants.ChatAction.TYPING,
+#         )
 
-        # Obtain analysis
-        analysis = analyze_journal(user, combined)
+#         # Obtain analysis
+#         analysis = analyze_journal(user, combined)
 
-        # Send to telegram
-        telegram_message = await context.bot.send_message(
-            chat_id=update.effective_chat.id, text=analysis
-        )
-        # Archive therapist message
-        message = await sync_to_async(user.messages.create)(
-            user=user,
-            text=analysis,
-            author="TherapistBot",
-            telegram_message_id=telegram_message.message_id,
-        )
-        # Mark existing messages as processed
-        await sync_to_async(user.messages.filter(author="User").update)(processed=True)
+#         # Send to telegram
+#         telegram_message = await context.bot.send_message(
+#             chat_id=update.effective_chat.id, text=analysis
+#         )
+#         # Archive therapist message
+#         message = await sync_to_async(user.messages.create)(
+#             user=user,
+#             text=analysis,
+#             author="TherapistBot",
+#             telegram_message_id=telegram_message.message_id,
+#         )
+#         # Mark existing messages as processed
+#         await sync_to_async(user.messages.filter(author="User").update)(processed=True)
 
 
 async def get_goal(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -195,24 +166,26 @@ async def get_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def transcribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = await get_user(update)
-    audio_file = await context.bot.get_file(update.message.voice.file_id)
-    buffer = io.BytesIO()
-    buffer.name = "InMemory.ogg"
-    await audio_file.download_to_memory(buffer)
-    open_ai_client = get_open_ai_client()
-    transcript = open_ai_client.audio.transcriptions.create(
-        model="whisper-1", file=buffer, response_format="verbose_json"
-    )
+    transcript = await audio_to_text(context, update.message.voice.file_id)
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"Transcription: {transcript.text}"[:4000],
+        text=f"Transcription: {transcript}"[:4000],
     )
+    await persist_message(user, transcript, update.message.id, source="TelegramVoice")
 
-    await sync_to_async(user.messages.create)(
-        text=transcript.text,
-        author="User",
-        telegram_message_id=update.message.message_id,
-        source="TelegramVoice",
+    send_typing_animation(context, user)
+
+    try:
+        reply = await send_message_to_assistant(user, transcript)
+    except Exception as e:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=str(e))
+        return
+
+    send_typing_animation(context, user)
+    telegram_message = await send_telegram_message(user, context, reply)
+
+    await persist_message(
+        user, reply, telegram_message.message_id, author="TherapistBot"
     )
 
 
@@ -257,7 +230,7 @@ async def reminders_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user.enable_reminders = reminders_on
     await sync_to_async(user.save)()
     user_message = f"Reminders switched {'on' if reminders_on else 'off'}"
-    await telegram_message(user, context, user_message)
+    await send_telegram_message(user, context, user_message)
     await user_log(user, context, user_message)
 
 
@@ -267,7 +240,7 @@ async def weekly_review_switch(update: Update, context: ContextTypes.DEFAULT_TYP
     weekly_review_on = command == "on"
     user.enable_week_in_review = weekly_review_on
     await sync_to_async(user.save)()
-    await telegram_message(
+    await send_telegram_message(
         user, context, f"Weekly review switched {'on' if weekly_review_on else 'off'}"
     )
 
@@ -277,10 +250,9 @@ def serve_bot():
 
     # Command handlers
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("setgoal", set_goal))
     application.add_handler(CommandHandler("goal", get_goal))
     application.add_handler(CommandHandler("info", get_info))
-    application.add_handler(CommandHandler("reflect", reflect))
+    # application.add_handler(CommandHandler("reflect", reflect))
     application.add_handler(
         CommandHandler("week_in_review", send_week_in_review_wrapper)
     )
