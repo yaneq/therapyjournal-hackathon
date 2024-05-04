@@ -28,9 +28,9 @@ if __name__ == "__main__":
             case "send_week_in_review":
                 asyncio.run(send_week_in_review_to_all())
             case "good_morning":
-                asyncio.run(trigger_interaction_for_all("good morning"))
+                asyncio.run(trigger_interaction_for_all("start-morning-check-in"))
             case "good_evening":
-                asyncio.run(trigger_interaction_for_all("good evening"))
+                asyncio.run(trigger_interaction_for_all("start-evening-check-in"))
 
             case _:
                 print(HELP_MESSAGE)
