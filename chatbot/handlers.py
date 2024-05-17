@@ -36,7 +36,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await sync_to_async(user.save)()
 
     reply = await send_message_to_assistant(user, "Hello")
-    telegram_message = await send_telegram_message(user, context, reply)
+    telegram_message = await send_telegram_message(user, context.bot, reply)
     await sync_to_async(user.messages.create)(
         user=user,
         text=reply,
@@ -58,7 +58,7 @@ async def new_entry(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=update.effective_chat.id, text=str(e))
         return
 
-    telegram_message = await send_telegram_message(user, context, reply)
+    telegram_message = await send_telegram_message(user, context.bot, reply)
     await persist_message(
         user, reply, telegram_message.message_id, author="TherapistBot"
     )
@@ -99,7 +99,7 @@ async def transcribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     send_typing_animation(context, user)
-    telegram_message = await send_telegram_message(user, context, reply)
+    telegram_message = await send_telegram_message(user, context.bot, reply)
     await persist_message(
         user, reply, telegram_message.message_id, author="TherapistBot"
     )
@@ -135,5 +135,5 @@ async def reminders_switch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user.enable_reminders = reminders_on
     await sync_to_async(user.save)()
     user_message = f"Reminders switched {'on' if reminders_on else 'off'}"
-    await send_telegram_message(user, context, user_message)
+    await send_telegram_message(user, context.bot, user_message)
     await user_log(user, context, user_message)

@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "diary-genie"
+version = "0.1.0"
+description = ""
+authors = ["Jan Koeppen <jan@yaneq.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "^1.0.1"
+psycopg2-binary = "^2.9.9"
+dsnparse = "^0.2.1"
+Django = "^5.0.6"
+asgiref = "^3.8.1"
+sentry-sdk = "^2.2.0"
+PyYAML = "^6.0.1"
+requests = "^2.31.0"
+python-telegram-bot = "^21.1.1"
+openai2 = "^1.7.4"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

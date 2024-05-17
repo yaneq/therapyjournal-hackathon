@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-def get_date_prefix(format: str = "%Y-%m-%d") -> str:
+def get_date_prefix(format: str = "%Y-%m-%d %H:%M") -> str:
     """
     Function returns the current date and time as a prefix to a prompt message.
     """

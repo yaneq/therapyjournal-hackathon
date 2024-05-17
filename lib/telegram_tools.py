@@ -7,9 +7,7 @@ from telegram.ext import (
 from lib.utils import parse_multiple_choice, purge_multiple_choice
 
 
-async def send_telegram_message(
-    user: User, context: ContextTypes.DEFAULT_TYPE, message: str
-):
+async def send_telegram_message(user: User, bot, message: str):
 
     matches = parse_multiple_choice(message)
     if matches:
@@ -21,7 +19,7 @@ async def send_telegram_message(
     message_without_tags = purge_multiple_choice(message)
 
     # Send to telegram
-    telegram_message = await context.bot.send_message(
+    telegram_message = await bot.send_message(
         chat_id=user.chat_id,
         text=message_without_tags,
         reply_markup=keyboard_markup,

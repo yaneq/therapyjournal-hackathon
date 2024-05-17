@@ -4,17 +4,15 @@ from telegram.ext import ApplicationBuilder
 import db
 from diary.models import User
 from lib.threads import send_message_to_assistant
+from lib.telegram_tools import send_telegram_message
 
 config = Config.load()
 
 
 async def trigger_interaction(user, bot, prompt):
     reply = await send_message_to_assistant(user, prompt)
-    telegram_message = await bot.send_message(
-        chat_id=user.chat_id,
-        text=reply,
-    )
 
+    telegram_message = await send_telegram_message(user, bot, reply)
     await db.persist_message(
         user, reply, telegram_message.message_id, author="TherapistBot"
     )
