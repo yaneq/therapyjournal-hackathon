@@ -1,12 +1,9 @@
-from lib.config import Config
 from lib.env import env
 from telegram.ext import ApplicationBuilder
 import db
 from diary.models import User
 from lib.threads import send_message_to_assistant
 from lib.telegram_tools import send_telegram_message
-
-config = Config.load()
 
 
 async def trigger_interaction(user, bot, prompt):

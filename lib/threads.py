@@ -4,13 +4,12 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from asgiref.sync import sync_to_async
 from diary.models import User
+
 from .open_ai_tools import get_open_ai_client
 from lib.dates import get_date_prefix
+from lib.env import env
 
-load_dotenv()
-from lib.config import Config
-
-config = Config.load()
+# load_dotenv()
 
 
 async def create_thread(user, open_ai_client):
@@ -67,7 +66,7 @@ async def send_message_to_assistant(user: User, message: str):
 
     # run therapy assistant with new message
     run = open_ai_client.beta.threads.runs.create(
-        thread_id=user.thread_id, assistant_id=config.assistant_id_life_coach
+        thread_id=user.thread_id, assistant_id=env("ASSISTANT_ID")
     )
 
     while run.status not in ["completed", "failed"]:

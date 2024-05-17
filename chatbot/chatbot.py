@@ -23,10 +23,6 @@ sentry_sdk.init(
     enable_tracing=True,
 )
 
-from lib.config import Config
-
-config = Config.load()
-
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
 )
