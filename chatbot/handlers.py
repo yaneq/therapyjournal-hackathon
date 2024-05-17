@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from asgiref.sync import sync_to_async
 import datetime
-from admin import user_log
+from lib.admin import user_log
 import db
 from db import persist_message
 from lib.assistant import suggest_improvements
@@ -12,6 +12,7 @@ from lib.whisper_tools import audio_to_text
 from lib.telegram_tools import send_telegram_message, send_typing_animation
 from diary.models import User
 from django.core.exceptions import ObjectDoesNotExist
+from lib.open_ai_tools import get_open_ai_client
 
 
 async def get_user(update: Update):

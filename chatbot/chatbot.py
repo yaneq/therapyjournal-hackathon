@@ -14,6 +14,7 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
 )
+from lib.env import env
 import sentry_sdk
 
 
