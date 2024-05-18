@@ -10,6 +10,8 @@ class User(models.Model):
     goal = models.CharField(max_length=20000, null=True)
     enable_week_in_review = models.BooleanField(default=False)
     enable_reminders = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=datetime.now)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class Message(models.Model):
@@ -24,7 +26,8 @@ class Message(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="messages")
     text = models.CharField(max_length=20000)
-    created_date = models.DateTimeField(default=datetime.now)
+    created_at = models.DateTimeField(default=datetime.now)
+    updated_at = models.DateTimeField(auto_now=True)
     author = models.CharField(
         max_length=15,
         choices=AuthorType.choices,
